@@ -25,13 +25,13 @@ contract LiftAMMTest is Test {
     }
 
     // Testando endereços dos tokens do LiftAMM
-    function test00LiftAMMTokenAddresses() public {
-        assertTrue(liftAmm.tokenA() == address(tokenA));
-        assertTrue(liftAmm.tokenB() == address(tokenB));
+    function testTokenAddresses() public {
+        assertEq(liftAmm.tokenA(), address(tokenA));
+        assertEq(liftAmm.tokenB(), address(tokenB));
     }
 
-    // Testando addLiquidity LiftAMM
-    function test00LiftAMMAddLiquidity() public {
+    // Testando addLiquidity
+    function testAddLiquidity() public {
         uint256 amountA = 1 ether;
         uint256 amountB = 10 ether;
 
@@ -43,36 +43,36 @@ contract LiftAMMTest is Test {
         uint256 ammTokenABalance = tokenA.balanceOf(address(liftAmm));
         uint256 ammTokenBBalance = tokenB.balanceOf(address(liftAmm));
 
-        uint256 liquidity = liftAmm.balance(address(owner));
+        uint256 liquidity = liftAmm.balanceOf(address(owner));
 
-        assertTrue(ammTokenABalance == amountA);
-        assertTrue(ammTokenBBalance == amountB);
-        assertTrue(liquidity == 3162277660168379331);
+        assertEq(ammTokenABalance, amountA);
+        assertEq(ammTokenBBalance, amountB);
+        assertEq(liquidity, 3162277660168379331);
     }
 
-    // Testando removeLiquidity LiftAMM
-    function test00LiftAMMRemoveLiquidity() public {
+    // Testando removeLiquidity
+    function testRemoveLiquidity() public {
         uint256 amountA = 1 ether;
         uint256 amountB = 10 ether;
 
         tokenA.approve(address(liftAmm), amountA);
         tokenB.approve(address(liftAmm), amountB);
         liftAmm.addLiquidity(amountA, amountB);
-        uint256 liquidity = liftAmm.balance(address(owner));
+        uint256 liquidity = liftAmm.balanceOf(address(owner));
 
         liftAmm.removeLiquidity(liquidity);
 
         uint256 ammTokenABalance = tokenA.balanceOf(address(liftAmm));
         uint256 ammTokenBBalance = tokenB.balanceOf(address(liftAmm));
-        uint256 liquidityAfter = liftAmm.balance(address(owner));
+        uint256 liquidityAfter = liftAmm.balanceOf(address(owner));
 
-        assertTrue(ammTokenABalance == 0);
-        assertTrue(ammTokenBBalance == 0);
-        assertTrue(liquidityAfter == 0);
+        assertEq(ammTokenABalance, 0);
+        assertEq(ammTokenBBalance, 0);
+        assertEq(liquidityAfter, 0);
     }
 
-    // Testando addLiquidity LiftAMM
-    function test00LiftAMMSwap() public {
+    // Testando swap B -> A
+    function testSwapTokenBForTokenA() public {
         uint256 amountA = 1 ether;
         uint256 amountB = 10 ether;
 
@@ -82,16 +82,43 @@ contract LiftAMMTest is Test {
 
         uint256 amountIn = 1 ether;
         tokenB.approve(address(liftAmm), amountIn);
-        liftAmm.swap(address(tokenB), amountIn);
+        uint256 time = block.timestamp + 5 minutes;
+        uint256 slippage = 0;
+        uint256 amountOut = liftAmm.swap(
+            address(tokenB),
+            amountIn,
+            slippage,
+            time
+        );
 
-        uint256 ammTokenABalance = tokenA.balanceOf(address(liftAmm));
-        uint256 amountOut = amountA - ammTokenABalance;
-
-        assertTrue(amountOut == 90909090909090910);
+        assertEq(amountOut, 90661089388014914);
     }
 
-    // Testando SwapWithSlippage LiftAMM
-    function test01LiftAMMSuccessSwapWithSlippage() public {
+    // Testando swap A -> B
+    function testSwapTokenAForTokenB() public {
+        uint256 amountA = 1 ether;
+        uint256 amountB = 10 ether;
+
+        tokenA.approve(address(liftAmm), amountA);
+        tokenB.approve(address(liftAmm), amountB);
+        liftAmm.addLiquidity(amountA, amountB);
+
+        uint256 amountIn = 1 ether;
+        tokenA.approve(address(liftAmm), amountIn);
+        uint256 time = block.timestamp + 5 minutes;
+        uint256 slippage = 0;
+        uint256 amountOut = liftAmm.swap(
+            address(tokenA),
+            amountIn,
+            slippage,
+            time
+        );
+
+        assertEq(amountOut, 4992488733099649475);
+    }
+
+    // Testando SwapFailSlippage
+    function testSwapFailSlippage() public {
         uint256 amountA = 1 ether;
         uint256 amountB = 10 ether;
 
@@ -102,53 +129,16 @@ contract LiftAMMTest is Test {
         uint256 amountIn = 1 ether;
         tokenB.approve(address(liftAmm), amountIn);
 
-        uint256 amountOutPrev = 90909090909090910;
-        uint256 amountOutMin = (amountOutPrev * 95) / 100;
-        liftAmm.swapWithSlippage(address(tokenB), amountIn, amountOutMin);
+        uint256 amountOutPrev = 90661089388014914;
 
-        uint256 ammTokenABalance = tokenA.balanceOf(address(liftAmm));
-        uint256 amountOut = amountA - ammTokenABalance;
-
-        assertTrue(amountOut >= amountOutMin);
-    }
-
-    function test01LiftAMMFailSwapWithSlippage() public {
-        uint256 amountA = 1 ether;
-        uint256 amountB = 10 ether;
-
-        tokenA.approve(address(liftAmm), amountA);
-        tokenB.approve(address(liftAmm), amountB);
-        liftAmm.addLiquidity(amountA, amountB);
-
-        uint256 amountIn = 1 ether;
-        tokenB.approve(address(liftAmm), amountIn);
-
-        uint256 amountOutPrev = 90909090909090910;
+        uint256 time = block.timestamp + 5 minutes;
+        uint256 slippage = amountOutPrev + 1;
         vm.expectRevert("Slippage Insuficiente");
-        liftAmm.swapWithSlippage(address(tokenB), amountIn, amountOutPrev + 1);
+        liftAmm.swap(address(tokenB), amountIn, slippage, time);
     }
 
-    function test02LiftAMMSuccessSwapWithDeadLine() public {
-        uint256 amountA = 1 ether;
-        uint256 amountB = 10 ether;
-
-        tokenA.approve(address(liftAmm), amountA);
-        tokenB.approve(address(liftAmm), amountB);
-        liftAmm.addLiquidity(amountA, amountB);
-
-        uint256 amountIn = 1 ether;
-        tokenB.approve(address(liftAmm), amountIn);
-        uint256 timestamp = block.timestamp;
-        uint256 delay = 5 minutes;
-        liftAmm.swapWithDeadline(address(tokenB), amountIn, timestamp + delay);
-
-        uint256 ammTokenABalance = tokenA.balanceOf(address(liftAmm));
-        uint256 amountOut = amountA - ammTokenABalance;
-
-        assertTrue(amountOut == 90909090909090910);
-    }
-
-    function test02LiftAMMFailSwapWithDeadLine() public {
+    // Testando SwapFailSlippage
+    function testSwapFailDeadLine() public {
         uint256 amountA = 1 ether;
         uint256 amountB = 10 ether;
 
@@ -161,27 +151,8 @@ contract LiftAMMTest is Test {
         uint256 timestamp = block.timestamp;
         uint256 delay = 5 minutes;
         vm.warp(timestamp + delay + 1);
+        uint256 slippage = 0;
         vm.expectRevert("EXPIRADO");
-        liftAmm.swapWithDeadline(address(tokenB), amountIn, timestamp + delay);
+        liftAmm.swap(address(tokenB), amountIn, slippage, timestamp);
     }
-
-    function test03LiftAMMSwapWithFee() public {
-        uint256 amountA = 1 ether;
-        uint256 amountB = 10 ether;
-
-        tokenA.approve(address(liftAmm), amountA);
-        tokenB.approve(address(liftAmm), amountB);
-        liftAmm.addLiquidity(amountA, amountB);
-
-        uint256 amountIn = 1 ether;
-        tokenB.approve(address(liftAmm), amountIn);
-        liftAmm.swapWithFee(address(tokenB), amountIn);
-
-        uint256 ammTokenABalance = tokenA.balanceOf(address(liftAmm));
-        uint256 amountOut = amountA - ammTokenABalance;
-
-        assertTrue(amountOut == 90661089388014914);
-    }
-
-    receive() external payable {}
 }
