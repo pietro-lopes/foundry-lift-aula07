@@ -29,7 +29,7 @@ Por favor instale o seguinte:
   ```powershell
   Get-Package | Where-Object {$_.ProviderName -in @('Programs','msi','chocolatey') -and ($_.Name -like 'Microsoft Visual C++*')} | Select-Object $_.Name
   ```
-  - Caso não apareça algo como:
+  - Caso **NÃO** apareça algo como:
 
   ```
   Microsoft Visual C++ 2015 x... 14.0.23026           msi
@@ -104,13 +104,10 @@ _Sempre que você fechar o terminal, você terá que recarregar as variáveis
 novamente._
 
   ```bash
-  forge create --verify --gas-price 60gwei --chain polygon-mumbai --rpc-url $MUMBAI_RPC --private-key $PRIVATE_KEY --etherscan-api-key $POLYGONSCAN_API_KEY src/T03TokenOwner.sol:T03TokenOwner
+  forge script script/LiftAMM.s.sol:DeployLiftAMM --rpc-url $MUMBAI_RPC --private-key $PRIVATE_KEY --with-gas-price 10gwei --broadcast --verify --etherscan-api-key $POLYGONSCAN_API_KEY -vvvv
   ```
 
-Edite onde for necessário, por exemplo o `--gas-price` e o contrato
-`src/<contrato>.sol:<contrato>` e adicione
-`--constructor-args <arg1> <arg2> <arg3>` caso seu contrato tenha construtor que
-precise de argumentos para inicialização
+Edite onde for necessário, por exemplo o `--with-gas-price`
 
 # Contribuindo
 
